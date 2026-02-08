@@ -10,11 +10,11 @@ import WeChatStatus from './tools/wechat-status.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// 简单的日志函数
+// 简单的日志函数 - 使用 stderr 避免干扰 MCP 协议
 const logger = {
-  info: (msg, data) => console.log(`[INFO] ${msg}`, data || ''),
+  info: (msg, data) => console.error(`[INFO] ${msg}`, data || ''),
   error: (msg, error) => console.error(`[ERROR] ${msg}`, error || ''),
-  debug: (msg, data) => process.env.DEBUG && console.log(`[DEBUG] ${msg}`, data || '')
+  debug: (msg, data) => process.env.DEBUG && console.error(`[DEBUG] ${msg}`, data || '')
 };
 
 // 创建MCP服务器
@@ -32,8 +32,8 @@ server.registerTool(
       title: z.string().describe("文章标题"),
       content: z.string().describe("Markdown格式的文章内容"),
       author: z.string().describe("作者名称"),
-      appId: z.string().describe("微信公众号AppID"),
-      appSecret: z.string().describe("微信公众号AppSecret"),
+      appId: z.string().optional().describe("微信公众号AppID (可选，可配置环境变量 WECHAT_APP_ID)"),
+      appSecret: z.string().optional().describe("微信公众号AppSecret (可选，可配置环境变量 WECHAT_APP_SECRET)"),
       coverImagePath: z.string().optional().describe("封面图片路径"),
       previewMode: z.boolean().default(false).describe("是否为预览模式"),
       previewOpenId: z.string().optional().describe("预览用户OpenID")
@@ -42,7 +42,7 @@ server.registerTool(
   async (params) => {
     const { title, content, author, appId, appSecret, coverImagePath, previewMode, previewOpenId } = params;
     logger.info(`Publishing article: ${title}`);
-    
+
     try {
       // 调用实际的发布逻辑
       const result = await WeChatPublisher.publish({
@@ -55,7 +55,7 @@ server.registerTool(
         previewMode,
         previewOpenId
       });
-      
+
       return result;
     } catch (error) {
       logger.error(`发布失败: ${error.message}`);
@@ -77,14 +77,14 @@ server.registerTool(
     description: "查询文章发布状态和统计数据",
     inputSchema: {
       msgId: z.string().describe("消息ID"),
-      appId: z.string().describe("微信公众号AppID"),
-      appSecret: z.string().describe("微信公众号AppSecret")
+      appId: z.string().optional().describe("微信公众号AppID (可选，可配置环境变量 WECHAT_APP_ID)"),
+      appSecret: z.string().optional().describe("微信公众号AppSecret (可选，可配置环境变量 WECHAT_APP_SECRET)")
     }
   },
   async (params) => {
     const { msgId, appId, appSecret } = params;
     logger.info(`Querying status for message: ${msgId}`);
-    
+
     try {
       // 调用实际的查询逻辑
       const result = await WeChatStatus.query({
@@ -92,7 +92,7 @@ server.registerTool(
         appId,
         appSecret
       });
-      
+
       return result;
     } catch (error) {
       logger.error(`查询失败: ${error.message}`);
@@ -109,14 +109,14 @@ server.registerTool(
 
 
 
-logger.info('WeChat Publisher MCP Server initialized');
+// logger.info('WeChat Publisher MCP Server initialized');
 
 // 启动服务器函数
 async function startServer() {
   try {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    logger.info('WeChat Publisher MCP Server connected via stdio');
+    // logger.info('WeChat Publisher MCP Server connected via stdio');
     return server;
   } catch (error) {
     logger.error('Failed to start server', error);
@@ -130,25 +130,25 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     logger.error('Failed to start server', error);
     process.exit(1);
   });
-
-  // Graceful shutdown
-  process.on('SIGINT', async () => {
-    logger.info('Received SIGINT, shutting down...');
-    process.exit(0);
-  });
 }
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  logger.info('Received SIGINT, shutting down...');
+  process.exit(0);
+});
 
 // 包装类
 class WeChatMCPServer {
   constructor() {
     this.server = server;
   }
-  
+
   async start() {
     try {
       const transport = new StdioServerTransport();
       await this.server.connect(transport);
-      logger.info('WeChat Publisher MCP Server connected via stdio');
+      // logger.info('WeChat Publisher MCP Server connected via stdio');
       return this.server;
     } catch (error) {
       logger.error('Failed to start server', error);

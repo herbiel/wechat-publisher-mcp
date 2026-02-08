@@ -188,11 +188,17 @@ wechat-publisher-mcp --help
   "mcpServers": {
     "wechat-publisher": {
       "command": "/path/to/your/node",
-      "args": ["/path/to/wechat-publisher-mcp/src/server.js"]
+      "args": ["/path/to/wechat-publisher-mcp/src/server.js"],
+      "env": {
+        "WECHAT_APP_ID": "your_app_id",
+        "WECHAT_APP_SECRET": "your_app_secret"
+      }
     }
   }
 }
 ```
+
+> **推荐**：通过环境变量配置 `WECHAT_APP_ID`和`WECHAT_APP_SECRET`，这样在使用工具时无需每次手动输入。
 
 #### Cursor 配置
 

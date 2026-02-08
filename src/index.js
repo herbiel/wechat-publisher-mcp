@@ -13,6 +13,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 极简文件日志用于调试 EOF 问题
+import { appendFileSync } from 'fs';
+const debugLog = (msg) => {
+  try {
+    appendFileSync('/tmp/wechat-mcp-debug.log', `${new Date().toISOString()} ${msg}\n`);
+  } catch (e) { }
+};
+
+// debugLog(`Process started. Args: ${JSON.stringify(process.argv)}`);
+// debugLog(`CWD: ${process.cwd()}`);
+// debugLog(`Env keys: ${Object.keys(process.env).join(',')}`);
+
 // 设置进程标题
 process.title = 'wechat-publisher-mcp';
 
@@ -48,36 +60,20 @@ process.on('SIGTERM', () => {
 // 启动服务器
 async function main() {
   try {
-    const packageJson = JSON.parse(readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
-    logger.info('Starting WeChat Publisher MCP Service...', {
-      version: packageJson.version,
-      nodeVersion: process.version,
-      platform: process.platform
-    });
-
     // 导入并启动服务器
     const { default: WeChatMCPServer } = await import('./server.js');
     const server = new WeChatMCPServer();
-    
     await server.start();
-    
-    logger.info('WeChat Publisher MCP Service started successfully');
-    
-    // 保持进程运行
-    process.stdin.resume();
-    
   } catch (error) {
-    logger.error('Failed to start WeChat Publisher MCP Service', {
-      error: error.message,
-      stack: error.stack
-    });
+    // 最后时刻的错误记录
+    try {
+      appendFileSync('/tmp/wechat-mcp-debug.log', `${new Date().toISOString()} Runtime Error: ${error.message}\n`);
+    } catch (e) { }
     process.exit(1);
   }
 }
 
 // 如果是直接执行此文件，则启动服务
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
-}
+main();
 
 export { main };

@@ -1,0 +1,2 @@
+[INFO] WeChat Publisher MCP Server initialized 
+[INFO] WeChat Publisher MCP Server connected via stdio 

@@ -5,11 +5,12 @@
 
 const logger = {
   info: (message, ...args) => {
+    // 使用 console.error 而不是 console.log，避免干扰 MCP 标准输出协议
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[INFO] ${message}`, ...args);
+      console.error(`[INFO] ${message}`, ...args);
     }
   },
-  
+
   error: (message, error) => {
     if (error && error.stack) {
       console.error(`[ERROR] ${message}\n${error.stack}`);
@@ -17,15 +18,15 @@ const logger = {
       console.error(`[ERROR] ${message}`, error || '');
     }
   },
-  
+
   debug: (message, ...args) => {
     if (process.env.DEBUG) {
-      console.log(`[DEBUG] ${message}`, ...args);
+      console.error(`[DEBUG] ${message}`, ...args);
     }
   },
-  
+
   warn: (message, ...args) => {
-    console.warn(`[WARN] ${message}`, ...args);
+    console.error(`[WARN] ${message}`, ...args);
   }
 };
 

@@ -14,17 +14,28 @@ class WeChatStatus {
    */
   static async query(params) {
     const startTime = Date.now();
-    
+
+    // 合并环境变量默认值
+    const finalParams = {
+      ...params,
+      appId: params.appId || process.env.WECHAT_APP_ID,
+      appSecret: params.appSecret || process.env.WECHAT_APP_SECRET
+    };
+
     try {
-      logger.info('开始查询状态', { msgId: params.msgId });
-      
+      logger.info('开始查询状态', { msgId: finalParams.msgId });
+
       // 1. 参数验证
-      const validation = validateStatusParams(params);
+      const validation = validateStatusParams(finalParams);
       if (!validation.valid) {
         throw new Error(`参数验证失败: ${validation.errors.join(', ')}`);
       }
 
-      const { msgId, appId, appSecret } = params;
+      const {
+        msgId,
+        appId,
+        appSecret
+      } = finalParams;
 
       // 2. 初始化微信API
       logger.debug('初始化微信API');
@@ -35,10 +46,10 @@ class WeChatStatus {
       const statusData = await wechatAPI.getPublishStatus(msgId);
 
       const executionTime = Date.now() - startTime;
-      logger.info('状态查询成功', { 
+      logger.info('状态查询成功', {
         msgId,
         status: statusData.publish_status,
-        executionTime: `${executionTime}ms` 
+        executionTime: `${executionTime}ms`
       });
 
       // 4. 构建成功响应
@@ -59,7 +70,7 @@ class WeChatStatus {
         executionTime: `${executionTime}ms`,
         stack: error.stack
       });
-      
+
       return {
         content: [{
           type: "text",
@@ -75,38 +86,38 @@ class WeChatStatus {
    */
   static buildStatusMessage(statusData, executionTime, msgId) {
     let message = `📊 文章状态查询结果\n\n`;
-    
+
     // 处理微信API的真实响应格式
     message += `📨 消息ID: ${msgId || '未知'}\n`;
-    
+
     // 发布状态
     if (statusData.publish_status !== undefined) {
       const statusText = this.getStatusText(statusData.publish_status);
       message += `📈 状态: ${statusText}\n`;
     }
-    
+
     // 处理文章详情（微信API返回的格式）
     if (statusData.article_detail && statusData.article_detail.item && statusData.article_detail.item.length > 0) {
       const article = statusData.article_detail.item[0];
-      
+
       if (article.title) {
         message += `📱 标题: ${article.title}\n`;
       }
-      
+
       if (article.author) {
         message += `👤 作者: ${article.author}\n`;
       }
-      
+
       if (article.publish_time) {
         message += `📅 发布时间: ${this.formatTimestamp(article.publish_time)}\n`;
       }
-      
+
       // 统计数据
       if (article.stat_info) {
         const stat = article.stat_info;
         message += `👀 阅读量: ${stat.read_num || 0}\n`;
         message += `❤️ 点赞数: ${stat.like_num || 0}\n`;
-        
+
         // 只有当有评论或分享数据时才显示
         if (stat.comment_num > 0) {
           message += `💬 评论数: ${stat.comment_num}\n`;
@@ -115,7 +126,7 @@ class WeChatStatus {
           message += `📤 分享数: ${stat.share_num}\n`;
         }
       }
-      
+
       // 文章链接
       if (article.url) {
         message += `🔗 文章链接: ${article.url}\n`;
@@ -124,7 +135,7 @@ class WeChatStatus {
       // 如果没有文章详情，可能是刚发布还未生成统计数据
       message += `ℹ️ 文章详情暂未生成，可能需要等待几分钟后重试\n`;
     }
-    
+
     return message;
   }
 
@@ -133,27 +144,27 @@ class WeChatStatus {
    */
   static buildErrorMessage(error) {
     let message = `❌ 状态查询失败: ${error.message}\n\n`;
-    
+
     // 常见错误的解决建议
     if (error.message.includes('access_token')) {
       message += `🔑 认证问题:\n`;
       message += `• 检查AppID和AppSecret是否正确\n`;
       message += `• 确认公众号权限是否足够\n\n`;
     }
-    
+
     if (error.message.includes('msgId') || error.message.includes('not found')) {
       message += `🔍 消息ID问题:\n`;
       message += `• 检查提供的msgId是否正确\n`;
       message += `• 确认消息是否确实存在\n`;
       message += `• 只能查询最近的发布记录\n\n`;
     }
-    
+
     message += `💡 解决建议:\n`;
     message += `• 确认msgId来自发布成功的返回结果\n`;
     message += `• 检查网络连接是否正常\n`;
     message += `• 如果是新发布的文章，请稍等几分钟后重试\n`;
     message += `• 确保查询的是本公众号发布的文章`;
-    
+
     return message;
   }
 
@@ -168,7 +179,7 @@ class WeChatStatus {
       3: '🟠 审核中',
       4: '🔴 审核失败'
     };
-    
+
     return statusMap[status] || `🤔 未知状态(${status})`;
   }
 
@@ -177,7 +188,7 @@ class WeChatStatus {
    */
   static formatTimestamp(timestamp) {
     if (!timestamp) return '未知';
-    
+
     try {
       const date = new Date(timestamp * 1000);
       return date.toLocaleString('zh-CN', {

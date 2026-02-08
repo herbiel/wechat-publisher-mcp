@@ -69,13 +69,13 @@ class MarkdownConverter {
   static convertHeadings(html) {
     // H1 - 主标题，较大字体，深色
     html = html.replace(/^# (.+)$/gm, '<h1 style="color: #2c3e50; font-size: 28px; font-weight: bold; margin: 24px 0 16px 0; line-height: 1.3; border-bottom: 3px solid #3498db; padding-bottom: 8px;">$1</h1>');
-    
+
     // H2 - 次标题，蓝色
     html = html.replace(/^## (.+)$/gm, '<h2 style="color: #3498db; font-size: 24px; font-weight: bold; margin: 20px 0 12px 0; line-height: 1.3;">🔹 $1</h2>');
-    
+
     // H3 - 三级标题，绿色
     html = html.replace(/^### (.+)$/gm, '<h3 style="color: #27ae60; font-size: 20px; font-weight: bold; margin: 18px 0 10px 0; line-height: 1.3;">▶ $1</h3>');
-    
+
     // H4 - 四级标题，紫色
     html = html.replace(/^#### (.+)$/gm, '<h4 style="color: #8e44ad; font-size: 18px; font-weight: bold; margin: 16px 0 8px 0; line-height: 1.3;">• $1</h4>');
 
@@ -88,10 +88,10 @@ class MarkdownConverter {
   static convertTextFormatting(html) {
     // 粗体 - 红色突出
     html = html.replace(/\*\*(.*?)\*\*/g, '<strong style="color: #e74c3c; font-weight: bold;">$1</strong>');
-    
+
     // 斜体 - 紫色
     html = html.replace(/\*(.*?)\*/g, '<em style="color: #9b59b6; font-style: italic;">$1</em>');
-    
+
     // 删除线
     html = html.replace(/~~(.*?)~~/g, '<del style="color: #95a5a6; text-decoration: line-through;">$1</del>');
 
@@ -104,10 +104,10 @@ class MarkdownConverter {
   static convertLists(html) {
     // 先处理有序列表
     html = html.replace(/^\d+\.\s+(.+)$/gm, '<li style="margin: 8px 0; line-height: 1.6;">$1</li>');
-    
+
     // 再处理无序列表
     html = html.replace(/^[-*+]\s+(.+)$/gm, '<li style="margin: 8px 0; line-height: 1.6;">$1</li>');
-    
+
     // 将连续的li标签包装在ul中
     html = html.replace(/(<li[^>]*>.*?<\/li>(\s*<li[^>]*>.*?<\/li>)*)/gs, (match) => {
       return `<ul style="margin: 16px 0; padding-left: 24px; list-style-type: disc;">${match}</ul>`;
@@ -128,7 +128,17 @@ class MarkdownConverter {
    * 处理链接
    */
   static convertLinks(html) {
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color: #3498db; text-decoration: none; border-bottom: 1px dotted #3498db;" target="_blank">$1</a>');
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+      // 安全检查：防止 javascript: 等恶意 schema
+      let safeUrl = url.trim();
+
+      // 如果链接以 javascript: 开头（忽略大小写），则替换为 #
+      if (safeUrl.toLowerCase().startsWith('javascript:')) {
+        safeUrl = '#';
+      }
+
+      return `<a href="${safeUrl}" style="color: #3498db; text-decoration: none; border-bottom: 1px dotted #3498db;" target="_blank">${text}</a>`;
+    });
     return html;
   }
 
@@ -144,7 +154,7 @@ class MarkdownConverter {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      
+
       // 检测表格开始（包含 | 的行）
       if (line.includes('|') && !inTable) {
         inTable = true;
@@ -184,14 +194,14 @@ class MarkdownConverter {
 
     // 解析表头
     const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
-    
+
     // 检查是否是有效的表格分隔符
     if (!separatorLine.includes('-')) {
       return tableLines.join('\n');
     }
 
     let tableHTML = '<table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
-    
+
     // 表头
     tableHTML += '<thead><tr style="background: #f8f9fa;">';
     headers.forEach(header => {
@@ -221,7 +231,7 @@ class MarkdownConverter {
   static convertParagraphs(html) {
     // 将双换行转换为段落分隔
     html = html.replace(/\n\s*\n/g, '</p><p style="margin: 16px 0; line-height: 1.8; text-align: justify; color: #333;">');
-    
+
     // 在开头和结尾添加段落标签
     html = '<p style="margin: 16px 0; line-height: 1.8; text-align: justify; color: #333;">' + html + '</p>';
 
@@ -234,10 +244,10 @@ class MarkdownConverter {
   static cleanupHTML(html) {
     // 移除空段落
     html = html.replace(/<p[^>]*>\s*<\/p>/g, '');
-    
+
     // 清理多余的空白
     html = html.replace(/\s+/g, ' ');
-    
+
     // 修复标签嵌套问题
     html = html.replace(/<p[^>]*>(\s*<h[1-6][^>]*>.*?<\/h[1-6]>\s*)<\/p>/g, '$1');
     html = html.replace(/<p[^>]*>(\s*<ul[^>]*>.*?<\/ul>\s*)<\/p>/gs, '$1');
